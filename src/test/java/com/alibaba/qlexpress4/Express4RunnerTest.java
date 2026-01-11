@@ -1657,4 +1657,16 @@ public class Express4RunnerTest {
         Object result = express4Runner.execute(script, scriptParams, QLOptions.DEFAULT_OPTIONS).getResult();
         Assert.assertEquals("formate string", result);
     }
+    
+    @Test
+    public void specialTokensTest() {
+        Express4Runner express4Runner = new Express4Runner(InitOptions.DEFAULT_OPTIONS);
+        Map<String, Object> context = new HashMap<>();
+        context.put("薪资项目@A【a】", 100);
+        context.put("薪资项目@B（b）", 1);
+        Number result =
+            (Number)express4Runner.execute("薪资项目@A【a】+ 薪资项目@B（b）", context, QLOptions.DEFAULT_OPTIONS).getResult();
+        
+        assertEquals(101, result.intValue());
+    }
 }
