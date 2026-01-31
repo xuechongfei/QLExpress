@@ -28,7 +28,9 @@ public class ClearDfaCacheTest {
         runner.parseToSyntaxTree(complexDataProcessingExpress);
         double beforeMemoryUsed = getMemoryUsedMB();
         runner.clearDFACache();
-        Assert.assertTrue(getMemoryUsedMB() < beforeMemoryUsed / 2);
+        double afterMemoryUsed = getMemoryUsedMB();
+        Assert.assertTrue(afterMemoryUsed < beforeMemoryUsed / 2);
+        System.out.printf("Before Used: %.2f MB, After Used: %.2f MB%n", beforeMemoryUsed, afterMemoryUsed);
     }
     
     @Test

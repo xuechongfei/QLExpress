@@ -178,7 +178,24 @@ leftAsso
     : binaryop newlines? baseExpr[precedence(_localctx.binaryop().getStart().getText()) + 1];
 
 binaryop
-    : opId | varId
+    : DIV
+    | MUL
+    | MOD
+    | ADD
+    | SUB
+    | GT
+    | LT
+    | GE
+    | LE
+    | NOEQ
+    | RIGHSHIFT
+    | URSHIFT
+    | LEFTSHIFT
+    | BIT_AND
+    | BIT_OR
+    | CARET
+    | opId
+    | varId
     ;
 
 // primary
@@ -418,27 +435,13 @@ assignOperator
     ;
 
 opId
-    :   GT
-    |   LT
-    |   GE
-    |   LE
-    |   BANG
+    :   BANG
     |   TILDE
     |   ADD
     |   SUB
-    |   MUL
-    |   DIV
     |   INC
     |   DEC
     |   DOTMUL
-    |   NOEQ
-    |   RIGHSHIFT
-    |   URSHIFT
-    |   LEFTSHIFT
-    |   BIT_AND
-    |   BIT_OR
-    |   MOD
-    |   CARET
     |   assignOperator
     |   OPID
     ;
