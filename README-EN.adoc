@@ -1849,6 +1849,12 @@ If you still need to use `char` type in scripts, you can obtain it through two m
 
 == Appendix II How to Contribute?
 
+=== How AI Contribute?
+
+link:CLAUDE.md[]
+
+=== How Human Contribute?
+
 QLExpress is completely open to community changes. Any suggestions and modifications will be welcome, and after discussion, reasonable ones will be accepted into the main branch.
 
 First, you need to clone the code to local. Before formally modifying the code, you need to prepare as follows:
