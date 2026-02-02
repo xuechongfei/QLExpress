@@ -589,6 +589,7 @@ include::./src/test/java/com/alibaba/qlexpress4/Express4RunnerTest.java[tag=getE
 | LIST     | 列表 | 列表元素
 | MAP      | 字段 | 无
 | IF       | 条件分支 | condition表达式,then逻辑块和else逻辑块
+| SWITCH   | switch分支 | switch表达式，各个case分支条件和代码块，以及default代码块
 | RETURN   | 返回语句 | 返回表达式
 | VARIABLE | 变量 | 无
 | VALUE    | 字面值   | 无
@@ -864,6 +865,15 @@ include::./src/test/resources/testsuite/independent/doc/for.ql[]
 [source,java]
 ----
 include::./src/test/resources/testsuite/independent/doc/for_each.ql[]
+----
+
+==== switch 语句
+
+支持类似 Java/C 的 switch 语法：
+
+[source,java]
+----
+include::./src/test/resources/testsuite/independent/doc/switch.ql[]
 ----
 
 ==== try-catch

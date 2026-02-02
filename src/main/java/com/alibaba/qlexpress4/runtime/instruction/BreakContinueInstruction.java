@@ -39,6 +39,10 @@ public class BreakContinueInstruction extends QLInstruction {
         return 0;
     }
     
+    public QResult getResult() {
+        return result;
+    }
+    
     @Override
     public void println(int index, int depth, Consumer<String> debug) {
         String breakContinue = result == QResult.LOOP_BREAK_RESULT ? "Break" : "Continue";

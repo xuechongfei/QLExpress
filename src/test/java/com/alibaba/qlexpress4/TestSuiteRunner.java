@@ -21,6 +21,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 /**
  * Author: DQinYuan
@@ -61,7 +62,7 @@ public class TestSuiteRunner {
     @Test
     public void featureDebug()
         throws URISyntaxException, IOException {
-        Path filePath = getTestSuiteRoot().resolve("independent/function/nested_function_calls.ql");
+        Path filePath = getTestSuiteRoot().resolve("independent/switch/switch_fallthrough.ql");
         handleFile(filePath, filePath.toString(), true);
     }
     
@@ -103,6 +104,7 @@ public class TestSuiteRunner {
             scriptOptionOp.map(scriptOption -> (QLOptions.Builder)scriptOption.get("qlOptions"));
         QLOptions qlOptions = optionsBuilder.isPresent() ? optionsBuilder.get().attachments(attachments).build()
             : QLOptions.builder().attachments(attachments).build();
+        Boolean noReturn = scriptOptionOp.map(scriptOption -> (Boolean)scriptOption.get("noReturn")).orElse(null);
         if (errCodeOp.isPresent()) {
             long start = System.currentTimeMillis();
             assertErrCode(express4Runner, path, qlScript, qlOptions, errCodeOp.get(), debug);
@@ -112,7 +114,10 @@ public class TestSuiteRunner {
         
         try {
             long start = System.currentTimeMillis();
-            express4Runner.execute(qlScript, Collections.emptyMap(), qlOptions);
+            QLResult qlResult = express4Runner.execute(qlScript, Collections.emptyMap(), qlOptions);
+            if (noReturn != null && noReturn) {
+                assertNull(qlResult.getResult());
+            }
             printOk(path, System.currentTimeMillis() - start);
         }
         catch (Exception e) {

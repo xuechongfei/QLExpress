@@ -36,6 +36,36 @@ public abstract class ScopeStackVisitor extends QLParserBaseVisitor<Void> {
     }
     
     @Override
+    public Void visitSwitchExpr(QLParser.SwitchExprContext ctx) {
+        // Visit switch expression
+        ctx.expression().accept(this);
+        
+        // Visit switch body with scope
+        QLParser.SwitchBlockStatementGroupsContext switchBlockContext = ctx.switchBlockStatementGroups();
+        if (switchBlockContext != null) {
+            push();
+            // Visit each case group
+            for (QLParser.SwitchBlockStatementGroupContext group : switchBlockContext.switchBlockStatementGroup()) {
+                // Visit case labels (they contain expressions)
+                if (group.switchLabels() != null) {
+                    for (QLParser.SwitchLabelContext label : group.switchLabels().switchLabel()) {
+                        if (label.expression() != null) {
+                            label.expression().accept(this);
+                        }
+                    }
+                }
+                // Visit case body
+                if (group.blockStatements() != null) {
+                    group.blockStatements().accept(this);
+                }
+            }
+            pop();
+        }
+        
+        return null;
+    }
+    
+    @Override
     public Void visitTryCatchExpr(QLParser.TryCatchExprContext ctx) {
         QLParser.BlockStatementsContext blockStatementsContext = ctx.blockStatements();
         if (blockStatementsContext != null) {

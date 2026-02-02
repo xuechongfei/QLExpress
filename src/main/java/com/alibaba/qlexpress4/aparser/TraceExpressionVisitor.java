@@ -106,6 +106,47 @@ public class TraceExpressionVisitor extends QLParserBaseVisitor<TracePointTree> 
     }
     
     @Override
+    public TracePointTree visitSwitchExpr(QLParser.SwitchExprContext ctx) {
+        // Create trace point for switch expression
+        List<TracePointTree> children = new ArrayList<>();
+        
+        // Add switch expression as child
+        TracePointTree switchExprTrace = ctx.expression().accept(this);
+        if (switchExprTrace != null) {
+            children.add(switchExprTrace);
+        }
+        
+        // Visit case bodies for tracing
+        QLParser.SwitchBlockStatementGroupsContext switchBlockContext = ctx.switchBlockStatementGroups();
+        if (switchBlockContext != null) {
+            for (QLParser.SwitchBlockStatementGroupContext group : switchBlockContext.switchBlockStatementGroup()) {
+                // Visit case label expressions
+                if (group.switchLabels() != null) {
+                    for (QLParser.SwitchLabelContext label : group.switchLabels().switchLabel()) {
+                        if (label.expression() != null) {
+                            TracePointTree caseExprTrace = label.expression().accept(this);
+                            if (caseExprTrace != null) {
+                                children.add(caseExprTrace);
+                            }
+                        }
+                    }
+                }
+                // Visit case body statements
+                if (group.blockStatements() != null) {
+                    TraceExpressionVisitor blockVisitor = new TraceExpressionVisitor();
+                    group.blockStatements().accept(blockVisitor);
+                    TracePointTree blockTrace = newPoint(TraceType.BLOCK,
+                        blockVisitor.getExpressionTracePoints(),
+                        group.blockStatements().getStart());
+                    children.add(blockTrace);
+                }
+            }
+        }
+        
+        return newPoint(TraceType.SWITCH, children, ctx.SWITCH().getSymbol());
+    }
+    
+    @Override
     public TracePointTree visitEmptyStatement(QLParser.EmptyStatementContext ctx) {
         expressionTracePoints.add(newPoint(TraceType.STATEMENT, Collections.emptyList(), ctx.getStart()));
         return null;

@@ -230,6 +230,7 @@ primaryNoFixPathable
 
 primaryNoFixNonPathable
     :   qlIf # ifExpr
+    |   SWITCH '(' newlines? expression newlines? ')' '{' newlines? switchBlockStatementGroups? newlines? '}' # switchExpr
     |   TRY LBRACE newlines? blockStatements? newlines? RBRACE tryCatches? (newlines? tryFinally)? # tryCatchExpr
     |   lambdaParameters ARROW newlines? ( LBRACE newlines? blockStatements? newlines? RBRACE | expression) # lambdaExpr
     ;
@@ -322,6 +323,9 @@ idMapKey
     |   IMPORT
     |   STATIC
     |   NEW
+    |   SWITCH
+    |   CASE
+    |   DEFAULT
     |   BYTE
     |   SHORT
     |   INT
@@ -449,4 +453,25 @@ opId
 varId
     : ID
     | FUNCTION
+    | CASE
+    | DEFAULT
+    ;
+
+// Switch statement
+
+switchBlockStatementGroups
+    : switchBlockStatementGroup+
+    ;
+
+switchBlockStatementGroup
+    : switchLabels newlines? blockStatements? newlines?
+    ;
+
+switchLabels
+    : switchLabel (newlines? switchLabel)*
+    ;
+
+switchLabel
+    : CASE expression ':'
+    | DEFAULT ':'
     ;

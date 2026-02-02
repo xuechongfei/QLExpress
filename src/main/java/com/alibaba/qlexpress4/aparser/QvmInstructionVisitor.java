@@ -98,6 +98,8 @@ public class QvmInstructionVisitor extends QLParserBaseVisitor<Void> {
     
     private int ifCounter = 0;
     
+    private int switchCounter = 0;
+    
     private int blockCounter = 0;
     
     private int macroCounter = 0;
@@ -310,7 +312,7 @@ public class QvmInstructionVisitor extends QLParserBaseVisitor<Void> {
         int forScopeMaxStackSize = Math.max(forInitSize, Math.max(forConditionSize, forUpdateSize));
         
         if (initOptions.isTraceExpression()) {
-            pureAddInstruction(new TraceEvaludatedInstruction(forErrReporter, ctx.FOR().getSymbol().getStartIndex()));
+            pureAddInstruction(new TraceEvaluatedInstruction(forErrReporter, ctx.FOR().getSymbol().getStartIndex()));
         }
         
         addInstruction(new ForInstruction(forErrReporter, forInitLambda, forConditionLambda,
@@ -362,7 +364,7 @@ public class QvmInstructionVisitor extends QLParserBaseVisitor<Void> {
         
         if (initOptions.isTraceExpression()) {
             pureAddInstruction(
-                new TraceEvaludatedInstruction(forEachErrReporter, ctx.FOR().getSymbol().getStartIndex()));
+                new TraceEvaluatedInstruction(forEachErrReporter, ctx.FOR().getSymbol().getStartIndex()));
         }
         
         addInstruction(new ForEachInstruction(forEachErrReporter, bodyDefinition, itVarCls,
@@ -391,7 +393,7 @@ public class QvmInstructionVisitor extends QLParserBaseVisitor<Void> {
         
         if (initOptions.isTraceExpression()) {
             pureAddInstruction(
-                new TraceEvaludatedInstruction(whileErrReporter, ctx.WHILE().getSymbol().getStartIndex()));
+                new TraceEvaluatedInstruction(whileErrReporter, ctx.WHILE().getSymbol().getStartIndex()));
         }
         
         addInstruction(new WhileInstruction(whileErrReporter, conditionLambda, whileBodyLambda,
@@ -452,7 +454,7 @@ public class QvmInstructionVisitor extends QLParserBaseVisitor<Void> {
         
         if (initOptions.isTraceExpression()) {
             pureAddInstruction(
-                new TraceEvaludatedInstruction(errorReporter, functionNameCtx.getStart().getStartIndex()));
+                new TraceEvaluatedInstruction(errorReporter, functionNameCtx.getStart().getStartIndex()));
         }
         
         addInstruction(new DefineFunctionInstruction(errorReporter, functionDefinition.getName(), functionDefinition));
@@ -608,10 +610,170 @@ public class QvmInstructionVisitor extends QLParserBaseVisitor<Void> {
         
         if (initOptions.isTraceExpression()) {
             pureAddInstruction(
-                new TraceEvaludatedInstruction(newReporterWithToken(ctx.getStart()), ctx.getStart().getStartIndex()));
+                new TraceEvaluatedInstruction(newReporterWithToken(ctx.getStart()), ctx.getStart().getStartIndex()));
         }
         
         addInstruction(new BreakContinueInstruction(newReporterWithToken(ctx.getStart()), qResult));
+        return null;
+    }
+    
+    @Override
+    public Void visitSwitchExpr(SwitchExprContext ctx) {
+        // Evaluate switch expression once and store in temporary variable
+        int switchCount = switchCount();
+        String switchVarName = "@switch_" + switchCount;
+        Token switchKeyToken = ctx.SWITCH().getSymbol();
+        ErrorReporter switchErrorReporter = newReporterWithToken(switchKeyToken);
+        
+        // Create scope for switch
+        String switchScopeName = generatorScope.getName() + SCOPE_SEPARATOR + "SWITCH_" + switchCount;
+        addInstruction(new NewScopeInstruction(switchErrorReporter, switchScopeName));
+        
+        // Evaluate and store switch expression
+        ctx.expression().accept(this);
+        addInstruction(new DefineLocalInstruction(switchErrorReporter, switchVarName, Object.class));
+        
+        SwitchBlockStatementGroupsContext switchBlockContext = ctx.switchBlockStatementGroups();
+        if (switchBlockContext == null) {
+            // Empty switch, push null as result
+            addInstruction(new ConstInstruction(switchErrorReporter, null, null));
+            addInstruction(new CloseScopeInstruction(switchErrorReporter, switchScopeName));
+            return null;
+        }
+        
+        List<SwitchBlockStatementGroupContext> groups = switchBlockContext.switchBlockStatementGroup();
+        
+        // Collect case bodies and metadata
+        List<List<QLInstruction>> caseBodies = new ArrayList<>();
+        List<List<ExpressionContext>> caseConditions = new ArrayList<>();
+        int defaultIndex = -1;
+        
+        for (int i = 0; i < groups.size(); i++) {
+            SwitchBlockStatementGroupContext group = groups.get(i);
+            SwitchLabelsContext labelsContext = group.switchLabels();
+            List<SwitchLabelContext> labels = labelsContext.switchLabel();
+            
+            // Collect case conditions
+            List<ExpressionContext> conditions = new ArrayList<>();
+            for (SwitchLabelContext label : labels) {
+                if (label.CASE() != null) {
+                    conditions.add(label.expression());
+                }
+                else if (label.DEFAULT() != null) {
+                    defaultIndex = i;
+                }
+            }
+            caseConditions.add(conditions);
+            
+            // Generate case body instructions
+            BlockStatementsContext bodyContext = group.blockStatements();
+            List<QLInstruction> bodyInstructions = Collections.emptyList();
+            if (bodyContext != null) {
+                QvmInstructionVisitor bodyVisitor = parseWithSubVisitor(bodyContext, generatorScope, Context.MACRO);
+                bodyInstructions = bodyVisitor.getInstructions();
+            }
+            caseBodies.add(bodyInstructions);
+        }
+        
+        // Generate comparison and jump logic
+        List<JumpIfPopInstruction> caseJumps = new ArrayList<>();
+        
+        for (int i = 0; i < groups.size(); i++) {
+            List<ExpressionContext> conditions = caseConditions.get(i);
+            for (ExpressionContext cond : conditions) {
+                // Load switch value
+                addInstruction(new LoadInstruction(switchErrorReporter, switchVarName, null));
+                // Evaluate case expression
+                cond.accept(this);
+                // Compare for equality using == operator
+                BinaryOperator equalsOp = operatorFactory.getBinaryOperator("==");
+                addInstruction(new OperatorInstruction(switchErrorReporter, equalsOp, null));
+                
+                // If equal (result is true), jump to case body
+                JumpIfPopInstruction jumpToCase = new JumpIfPopInstruction(switchErrorReporter, true, -1);
+                pureAddInstruction(jumpToCase);
+                caseJumps.add(jumpToCase);
+            }
+        }
+        
+        // No match, jump to default or end
+        JumpInstruction jumpToDefaultOrEnd = new JumpInstruction(switchErrorReporter, -1);
+        pureAddInstruction(jumpToDefaultOrEnd);
+        int jumpToDefaultStartPos = instructionList.size();
+        
+        // Generate case bodies
+        List<JumpInstruction> breakJumps = new ArrayList<>();
+        int caseJumpIndex = 0;
+        
+        for (int i = 0; i < groups.size(); i++) {
+            // Set jump targets for this case
+            int numConditions = caseConditions.get(i).size();
+            int caseStartPos = instructionList.size();
+            
+            for (int j = 0; j < numConditions; j++) {
+                if (caseJumpIndex < caseJumps.size()) {
+                    int jumpInstrPos = instructionList.indexOf(caseJumps.get(caseJumpIndex));
+                    // Position should be relative to the instruction AFTER the JumpIfPop
+                    int jumpStart = jumpInstrPos + 1;
+                    caseJumps.get(caseJumpIndex).setPosition(caseStartPos - jumpStart);
+                    caseJumpIndex++;
+                }
+            }
+            
+            // Set default jump target
+            if (i == defaultIndex) {
+                jumpToDefaultOrEnd.setPosition(caseStartPos - jumpToDefaultStartPos);
+            }
+            
+            // Add case body
+            List<QLInstruction> bodyInstructions = caseBodies.get(i);
+            for (QLInstruction instr : bodyInstructions) {
+                if ((instr instanceof BreakContinueInstruction)
+                    && (((BreakContinueInstruction)instr).getResult() == QResult.LOOP_BREAK_RESULT)) {
+                    // Replace break with jump to end
+                    JumpInstruction breakJump = new JumpInstruction(switchErrorReporter, -1);
+                    pureAddInstruction(breakJump);
+                    breakJumps.add(breakJump);
+                }
+                else {
+                    pureAddInstruction(instr);
+                }
+            }
+        }
+        
+        // Set end position
+        int endPosition = instructionList.size();
+        
+        // Fix up break jumps
+        for (JumpInstruction breakJump : breakJumps) {
+            int breakJumpPos = instructionList.indexOf(breakJump);
+            breakJump.setPosition(endPosition - breakJumpPos - 1);
+        }
+        
+        // If no default, set jump to end
+        if (defaultIndex == -1) {
+            jumpToDefaultOrEnd.setPosition(endPosition - jumpToDefaultStartPos);
+        }
+        
+        // If no case matched and no explicit return, push null
+        boolean needsDefaultValue = true;
+        if (defaultIndex >= 0) {
+            List<QLInstruction> defaultBody = caseBodies.get(defaultIndex);
+            if (!defaultBody.isEmpty()) {
+                QLInstruction lastInstr = defaultBody.get(defaultBody.size() - 1);
+                if (lastInstr instanceof ReturnInstruction || lastInstr instanceof BreakContinueInstruction) {
+                    needsDefaultValue = false;
+                }
+            }
+        }
+        if (needsDefaultValue) {
+            addInstruction(new ConstInstruction(switchErrorReporter, null, null));
+        }
+        if (initOptions.isTraceExpression()) {
+            pureAddInstruction(new TracePeekInstruction(switchErrorReporter, switchKeyToken.getStartIndex()));
+        }
+        
+        addInstruction(new CloseScopeInstruction(switchErrorReporter, switchScopeName));
         return null;
     }
     
@@ -1106,7 +1268,7 @@ public class QvmInstructionVisitor extends QLParserBaseVisitor<Void> {
                 lastStmt instanceof ExpressionStatementContext));
         
         if (initOptions.isTraceExpression()) {
-            pureAddInstruction(new TraceEvaludatedInstruction(newReporterWithToken(ctx.varId().getStart()),
+            pureAddInstruction(new TraceEvaluatedInstruction(newReporterWithToken(ctx.varId().getStart()),
                 ctx.varId().getStart().getStartIndex()));
         }
         
@@ -1142,7 +1304,7 @@ public class QvmInstructionVisitor extends QLParserBaseVisitor<Void> {
     public Void visitLocalVariableDeclaration(LocalVariableDeclarationContext ctx) {
         if (initOptions.isTraceExpression()) {
             addInstruction(
-                new TraceEvaludatedInstruction(newReporterWithToken(ctx.getStart()), ctx.getStart().getStartIndex()));
+                new TraceEvaluatedInstruction(newReporterWithToken(ctx.getStart()), ctx.getStart().getStartIndex()));
         }
         
         Class<?> declCls = parseDeclType(ctx.declType());
@@ -1720,6 +1882,10 @@ public class QvmInstructionVisitor extends QLParserBaseVisitor<Void> {
     
     private int ifCount() {
         return ifCounter++;
+    }
+    
+    private int switchCount() {
+        return switchCounter++;
     }
     
     private int tryCount() {

@@ -588,6 +588,7 @@ Supported expression trace point types and corresponding child node meanings are
 | LIST     | List | List elements
 | MAP      | Field | None
 | IF       | Conditional branch | Condition expression, then logic block and else logic block
+| SWITCH   | switch branch | Switch expression, case branch conditions and code blocks, and the default code block
 | RETURN   | Return statement | Return expression
 | VARIABLE | Variable | None
 | VALUE    | Literal value | None
@@ -863,6 +864,15 @@ include::./src/test/resources/testsuite/independent/doc/for.ql[]
 [source,java]
 ----
 include::./src/test/resources/testsuite/independent/doc/for_each.ql[]
+----
+
+==== switch Statement
+
+Supports Java/C-like switch syntax:
+
+[source,java]
+----
+include::./src/test/resources/testsuite/independent/doc/switch.ql[]
 ----
 
 ==== try-catch

@@ -258,6 +258,23 @@ public class Express4RunnerTest {
         QLResult resultEmptyStmtFilter =
             express4Runner.execute("a=1;;;;", new HashMap<>(), QLOptions.builder().traceExpression(true).build());
         Assert.assertEquals(1, resultEmptyStmtFilter.getExpressionTraces().size());
+        
+        Map<String, Object> switchCtx = new HashMap<>();
+        switchCtx.put("a", 1);
+        switchCtx.put("b", 29);
+        QLResult resultSwitch = express4Runner.execute(
+            "switch (a + b) {\n" + "  case 30:\n" + "    result = a * 2;\n" + "    break;\n" + "  default:\n"
+                + "    result = 0;\n" + "}\nreturn result;",
+            switchCtx,
+            QLOptions.builder().traceExpression(true).build());
+        Assert.assertEquals(2, resultSwitch.getResult());
+        Assert.assertEquals(
+            "SWITCH switch null\n" + "  | OPERATOR + 30\n" + "      | VARIABLE a 1\n" + "      | VARIABLE b 29\n"
+                + "  | VALUE 30 30\n" + "  | BLOCK result null\n" + "      | OPERATOR = 2\n"
+                + "          | VARIABLE result null\n" + "          | OPERATOR * 2\n" + "              | VARIABLE a 1\n"
+                + "              | VALUE 2 2\n" + "      | STATEMENT break null\n" + "  | BLOCK result \n"
+                + "      | OPERATOR = \n" + "          | VARIABLE result \n" + "          | VALUE 0 \n",
+            resultSwitch.getExpressionTraces().get(0).toPrettyString(0));
     }
     
     @Test
@@ -1162,6 +1179,27 @@ public class Express4RunnerTest {
         expectOutVarNamesExcludeParams.add("x");
         expectOutVarNamesExcludeParams.add("y");
         Assert.assertEquals(expectOutVarNamesExcludeParams, outVarNamesExcludeParams);
+        
+        // switch
+        Set<String> outVarNamesSwitch =
+            express4Runner.getOutVarNames("int globalVar = 1;\n" + "int x = 2;\n" + "switch (x) {\n" + "  case 1:\n"
+                + "    int localVar = 10;\n" + "    globalVar = localVar + externalVar;\n" + "    break;\n"
+                + "  case 2:\n" + "    int y = externalVar2 + 10;\n" + "    break;\n" + "}\n" + "return globalVar;");
+        Set<String> expectOutVarNamesSwitch = new HashSet<>();
+        expectOutVarNamesSwitch.add("externalVar");
+        expectOutVarNamesSwitch.add("externalVar2");
+        Assert.assertEquals(expectOutVarNamesSwitch, outVarNamesSwitch);
+        
+        Set<String> outVarNamesSwitchNested =
+            express4Runner.getOutVarNames("int x = 1;\n" + "int y = 2;\n" + "switch (x) {\n" + "  case 1:\n"
+                + "    switch (y) {\n" + "      case 1:\n" + "        int temp = outerVar + 10;\n" + // 使用外部变量（在表达式中使用）
+                "        break;\n" + "      case 2:\n" + "        int innerLocal = 20;\n"
+                + "        innerLocal = innerVar;\n" + // 使用另一个外部变量（右侧）
+                "        break;\n" + "    }\n" + "    break;\n" + "}\n");
+        Set<String> expectOutVarNamesSwitchNested = new HashSet<>();
+        expectOutVarNamesSwitchNested.add("outerVar");
+        expectOutVarNamesSwitchNested.add("innerVar");
+        Assert.assertEquals(expectOutVarNamesSwitchNested, outVarNamesSwitchNested);
     }
     
     @Test
@@ -1181,6 +1219,14 @@ public class Express4RunnerTest {
         Assert.assertEquals(Arrays.asList("x.prop", "y.value"),
             flatOutVarAttrs(express4Runner.getOutVarAttrs(
                 "function sub(a, b) {\n" + "    return a.field - b.name;\n" + "}\n" + "return sub(x.prop, y.value);")));
+        
+        // switch
+        Assert
+            .assertEquals(Arrays.asList("e0.externalVar", "e1.externalVar2"),
+                flatOutVarAttrs(express4Runner.getOutVarAttrs("int globalVar = 1;\n" + "int x = 2;\n" + "switch (x) {\n"
+                    + "  case 1:\n" + "    int localVar = 10;\n" + "    globalVar = localVar + e0.externalVar;\n"
+                    + "    break;\n" + "  case 2:\n" + "    int y = e1.externalVar2 + 10;\n" + "    break;\n" + "}\n"
+                    + "return globalVar;")));
     }
     
     private List<String> flatOutVarAttrs(Set<List<String>> outVarAttrs) {

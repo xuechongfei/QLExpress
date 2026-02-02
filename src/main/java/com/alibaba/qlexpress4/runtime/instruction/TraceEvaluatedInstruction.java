@@ -16,11 +16,11 @@ import com.alibaba.qlexpress4.utils.PrintlnUtils;
  *
  * Author: DQinYuan
  */
-public class TraceEvaludatedInstruction extends QLInstruction {
+public class TraceEvaluatedInstruction extends QLInstruction {
     
     private final Integer traceKey;
     
-    public TraceEvaludatedInstruction(ErrorReporter errorReporter, Integer traceKey) {
+    public TraceEvaluatedInstruction(ErrorReporter errorReporter, Integer traceKey) {
         super(errorReporter);
         this.traceKey = traceKey;
     }
