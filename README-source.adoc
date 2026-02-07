@@ -671,7 +671,7 @@ include::./src/test/resources/testsuite/independent/doc/convenient_syntax_elemen
 include::./src/test/resources/testsuite/independent/spread/list_spread.ql[tag=spreadExample]
 ----
 
-`*.` 操作符还支持多层级嵌套列表的自动展平。当列表中包含嵌套列表时，`*.` 操作符会自动递归展平所有层级，直到找到具有指定属性或方法的元素：
+`*.` 操作符还支持多层级嵌套列表的自动展平。当列表中包含嵌套列表时，会自动递归展平所有层级，直到找到具有指定属性或方法的元素：
 
 [source,java]
 ----
