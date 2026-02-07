@@ -1,7 +1,5 @@
 :toc:
 
-include::version.adoc[]
-
 = QLExpress
 
 image::images/logo.png[]
@@ -106,7 +104,7 @@ QLExpress4 supports omitting semicolons, making expressions more concise. For de
 
 === Adding Dependencies
 
-[source,xml]
+[source,xml,subs="attributes+"]
 ----
 <dependency>
     <groupId>com.alibaba</groupId>

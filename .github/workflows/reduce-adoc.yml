@@ -3,7 +3,6 @@ on:
   push:
     paths:
       - '**/*-source.adoc'
-      - 'version.adoc.template'
       - 'pom.xml'
     branches: ['**']
   workflow_dispatch:
@@ -28,16 +27,6 @@ jobs:
       - name: Install asciidoctor-reducer
         run: gem install --no-document asciidoctor-reducer
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '8'
-          cache: 'maven'
-
-      - name: Generate version.adoc
-        run: mvn generate-resources
-
       - name: Reduce all *-source.adoc files
         shell: bash
         run: |
@@ -49,6 +38,16 @@ jobs:
             echo "Reducing $src -> $out"
             asciidoctor-reducer --preserve-conditionals -o "$out" "$src"
           done
+
+      - name: Replace version placeholders
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Extract version from pom.xml using grep
+          VERSION=$(grep -oP '<version>\K[^<]+' pom.xml | head -1)
+          echo "Replacing {project-version} with $VERSION"
+          # Replace in all generated .adoc files (but not -source.adoc files)
+          find . -type f -name '*.adoc' ! -name '*-source.adoc' -exec sed -i "s/{project-version}/$VERSION/g" {} \;
 
       - name: Commit reduced files
         uses: EndBug/add-and-commit@v9
