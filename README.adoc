@@ -1230,6 +1230,26 @@ assert(mm*.key==["aaa", "bbb"])
 assert(mm*.value==[1, 2])
 ----
 
+`*.` 操作符还支持多层级嵌套列表的自动展平。当列表中包含嵌套列表时，`*.` 操作符会自动递归展平所有层级，直到找到具有指定属性或方法的元素：
+
+[source,java]
+----
+// Use case 1: Spread nested list to get field values
+l = [[{"a":10},{"a":12}],[{"a":13}],[{"a":14}]]
+result = l*.a
+assert(result == [10, 12, 13, 14])
+
+// Use case 2: Spread nested list to call methods
+l2 = [[{"a":10},{"a":12}],[{"a":13}],[{"a":14}]]
+result2 = l2*.get("a")
+assert(result2 == [10, 12, 13, 14])
+
+// Use case 3: if field exists at current level, don't flatten
+l3 = [[{"a":10},{"a":12}],[{"a":13}],[{"a":14}]]
+result3 = l3*.length
+assert(result3 == [2, 1, 1])
+----
+
 在映射中通过 `@class` key 指定类型的全限定名，就可以直接使用 JSON 创建复杂Java对象。比如下面的 MyHome ， 是一个含有复杂嵌套类型 Java 类：
 
 [source,java]

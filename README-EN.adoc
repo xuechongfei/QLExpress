@@ -1229,6 +1229,26 @@ assert(mm*.key==["aaa", "bbb"])
 assert(mm*.value==[1, 2])
 ----
 
+The `*.` operator also supports automatic flattening of multi-level nested lists. When a list contains nested lists, the `*.` operator will automatically and recursively flatten all levels until it finds elements with the specified property or method:
+
+[source,java]
+----
+// Use case 1: Spread nested list to get field values
+l = [[{"a":10},{"a":12}],[{"a":13}],[{"a":14}]]
+result = l*.a
+assert(result == [10, 12, 13, 14])
+
+// Use case 2: Spread nested list to call methods
+l2 = [[{"a":10},{"a":12}],[{"a":13}],[{"a":14}]]
+result2 = l2*.get("a")
+assert(result2 == [10, 12, 13, 14])
+
+// Use case 3: if field exists at current level, don't flatten
+l3 = [[{"a":10},{"a":12}],[{"a":13}],[{"a":14}]]
+result3 = l3*.length
+assert(result3 == [2, 1, 1])
+----
+
 In mappings, by specifying the fully qualified name of the type through the `@class` key, you can directly use JSON to create complex Java objects. For example, the following MyHome is a Java class with complex nested types:
 
 [source,java]
