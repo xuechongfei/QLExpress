@@ -1831,4 +1831,12 @@ public class Express4RunnerTest {
         // Should throw IllegalArgumentException when alias starts with lowercase
         ImportManager.importClsAlias(ArrayList.class, "myList");
     }
+    
+    @Test
+    public void defaultAndSwitchAsVariable() {
+        Express4Runner express4Runner = new Express4Runner(InitOptions.DEFAULT_OPTIONS);
+        QLResult result = express4Runner
+            .execute("default = 1\nswitch = 2;\ndefault+switch", Collections.emptyMap(), QLOptions.DEFAULT_OPTIONS);
+        assertEquals(3, result.getResult());
+    }
 }

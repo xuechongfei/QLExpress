@@ -455,6 +455,7 @@ varId
     | FUNCTION
     | CASE
     | DEFAULT
+    | SWITCH
     ;
 
 // Switch (unified statement and expression)
